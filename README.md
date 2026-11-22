@@ -1,6 +1,6 @@
 ![Copyright ev0lve Digital](https://img.shields.io/badge/Copyright-ev0lve%20Digital-blue) ![GitHub License](https://img.shields.io/github/license/HvH-gg/CSGO-LegacyDownloader) ![Issues](https://img.shields.io/github/issues/HvH-gg/CSGO-LegacyDownloader) ![Downloads](https://img.shields.io/github/downloads/HvH-gg/CSGO-LegacyDownloader/total) ![Stars](https://img.shields.io/github/stars/HvH-gg/CSGO-LegacyDownloader)
 
-# [HvH.gg](https://hvh.gg) CSGO Legacy Downloader
+# [HvH.gg](https://hvh.gg) CSGO Legacy Downloader (1.1.0)
 
 The CSGO Legacy Downloader lets you download and run the old CS:GO builds the legacy HvH scene still plays on. All files come straight from Steam, so no downloads from shady thirdparty sites are required.
 
@@ -32,6 +32,13 @@ The CSGO Legacy Downloader lets you download and run the old CS:GO builds the le
 The server script tells you what is missing and the `apt` command for it. It installs nothing itself.
 
 # Game (Windows)
+**Fast track:** open PowerShell in the folder you want it in and run
+```powershell
+irm https://legacy.hvh.gg/game | iex
+```
+It gets the scripts into `.CSGO-LegacyDownloader` and starts the downloader (step 3).
+
+**Or by hand:**
 1. Download the latest release and extract it
 2. Right click `download-game.ps1` and choose "Run with PowerShell", or run  
    `powershell -ExecutionPolicy Bypass -File download-game.ps1`
@@ -45,6 +52,15 @@ The server script tells you what is missing and the `apt` command for it. It ins
 To skip the questions: `download-game.ps1 -Version 2020 -Path D:\csgo-2020 -Username <steam name>`
 
 # Server (Linux)
+**Fast track:**
+```bash
+curl -fsSL https://legacy.hvh.gg/server | bash
+# or without questions:
+curl -fsSL https://legacy.hvh.gg/server | bash -s -- 2018 /home/csgo/server-2018
+```
+It gets the scripts into `./csgo-legacy` and starts the install (step 2). Go on with step 3 in that folder.
+
+**Or by hand:**
 1. Download the latest release and extract it on your server
 2. Run `./csgo-server.sh install` and choose the version and the folder  
    2.1. Or without questions: `./csgo-server.sh install 2018 /home/csgo/server-2018`
