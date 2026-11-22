@@ -1,0 +1,85 @@
+{
+  "comment": "Old CS:GO builds by Steam depot manifest. client: app 730 (needs a Steam account), server: app 740 (anonymous). Manifest ids are text: they do not fit a JSON number.",
+  "versions": [
+    {
+      "id": "2020",
+      "name": "CS:GO 2020",
+      "patchVersion": "1.37.6.4",
+      "versionDate": "Aug 17 2020",
+      "client": {
+        "app": 730,
+        "depots": [
+          { "depot": 731, "manifest": "3979823388424176625" },
+          { "depot": 732, "manifest": "3743854784814690676" }
+        ]
+      },
+      "server": {
+        "app": 740,
+        "depots": [
+          { "depot": 731, "manifest": "3979823388424176625" },
+          { "depot": 740, "manifest": "6229659707837862880" }
+        ]
+      }
+    },
+    {
+      "id": "2019",
+      "name": "CS:GO 2019",
+      "patchVersion": "1.37.3.1",
+      "versionDate": "Dec 06 2019",
+      "client": {
+        "app": 730,
+        "depots": [
+          { "depot": 731, "manifest": "4818006245664730518" },
+          { "depot": 732, "manifest": "318811781041483623" }
+        ]
+      },
+      "server": {
+        "app": 740,
+        "depots": [
+          { "depot": 731, "manifest": "4818006245664730518" },
+          { "depot": 740, "manifest": "8746025470087382583" }
+        ]
+      }
+    },
+    {
+      "id": "2018",
+      "name": "CS:GO 2018",
+      "patchVersion": "1.36.2.9",
+      "versionDate": "Mar 07 2018",
+      "client": {
+        "app": 730,
+        "depots": [
+          { "depot": 731, "manifest": "1726760845998127111" },
+          { "depot": 732, "manifest": "6645681230678480473" }
+        ]
+      },
+      "server": {
+        "app": 740,
+        "depots": [
+          { "depot": 731, "manifest": "1726760845998127111" },
+          { "depot": 740, "manifest": "9121620377426899826" }
+        ]
+      }
+    },
+    {
+      "id": "2016",
+      "name": "CS:GO 2016",
+      "patchVersion": "1.35.6.2",
+      "versionDate": "Dec 13 2016",
+      "client": {
+        "app": 730,
+        "depots": [
+          { "depot": 731, "manifest": "1205966024758532588" },
+          { "depot": 732, "manifest": "3685647563144317383" }
+        ]
+      },
+      "server": {
+        "app": 740,
+        "depots": [
+          { "depot": 731, "manifest": "1205966024758532588" },
+          { "depot": 740, "manifest": "2698345708470597621" }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+tools/
+csgo-*/
+server-*/
+conf/
+csgo-server-*.sh
