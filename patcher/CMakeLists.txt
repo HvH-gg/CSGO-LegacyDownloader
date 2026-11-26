@@ -25,6 +25,7 @@ add_library(csgo-patcher SHARED
     client/src/patch/registry.cpp
     client/src/patches/challenge_key_overflow.cpp
     client/src/patches/splitscreen_slot_oob.cpp
+    client/src/patches/mdl_studiohdr2_oob.cpp
     client/src/dllmain.cpp
 )
 target_include_directories(csgo-patcher PRIVATE client/src)

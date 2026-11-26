@@ -1,6 +1,7 @@
 #include "patch/registry.h"
 
 #include "patches/challenge_key_overflow.h"
+#include "patches/mdl_studiohdr2_oob.h"
 #include "patches/splitscreen_slot_oob.h"
 #include "sys/log.h"
 
@@ -12,6 +13,7 @@ PatchRegistry PatchRegistry::with_builtin_patches() {
     // apply loop and reporting pick them up automatically.
     registry.add(make_challenge_key_overflow_patch());
     registry.add(make_splitscreen_slot_oob_patch());
+    registry.add(make_mdl_studiohdr2_oob_patch());
     return registry;
 }
 

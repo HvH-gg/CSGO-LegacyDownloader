@@ -16,13 +16,7 @@ Original game files are never modified on disk — all fixes are applied in memo
 |---|---|---|---|
 | `challenge-key-overflow` | Unbounded public-key / signature length in the S2C challenge reply (`CBaseClientState::ProcessConnectionlessPacket`) writes past two `char[1024]` stack buffers → stack overflow / RCE from a malicious server. | server → client | **Implemented, signature-validated against 2018 `engine.dll`.** |
 | `splitscreen-slot-oob` | `CSVCMsg_SplitScreen.slot` used as an unchecked array index, then an indirect virtual call through the fetched pointer → reliable RCE from a malicious server (Secret Club disclosure). | server → client | **Implemented, signature-validated against 2018 `engine.dll`.** |
-
-### Located but not yet wired
-
-Reverse-engineered and understood; slots into the same `IPatch` framework:
-
-- **MDL `studiohdr2index` OOB write** (`CMDLCache::ReadMDLFile`, in `datacache.dll`)
-  — index from a downloaded model used as an unchecked offset for a write.
+| `mdl-studiohdr2-oob` | `studiohdr2index` read from a downloaded `.mdl` and used as an unchecked write offset (`CMDLCache::ReadMDLFile` in `datacache.dll`) → out-of-bounds write from a malicious server (Synacktiv disclosure). | server → client | **Implemented, signature-validated against 2018 `datacache.dll`.** |
 
 ### Deliberately deferred
 
@@ -57,6 +51,17 @@ vulnerable handler never runs. Only a data pointer in the vtable is changed; no
 code is modified, and the guard self-validates that the slot currently holds the
 expected parser before swapping.
 
+## How the MDL fix works
+
+The model loader uses `studiohdr2index` (read from the `.mdl`) as a write offset
+into the loaded model buffer, checking only that it is non-zero. The fix is a
+small trampoline at that decision: it keeps the non-zero test and adds a bounds
+check that the write (`index + 0x34`) stays inside the model buffer. An
+out-of-range index is routed to the engine's existing "model has no studiohdr2"
+rejection path, so the model is discarded instead of corrupting memory. Only the
+affected datacache module is touched, and the hook self-validates the stolen
+bytes before installing.
+
 ## Verification status
 
 - `challenge-key-overflow`: the signature matches **exactly twice** in the 2018
@@ -64,7 +69,11 @@ expected parser before swapping.
   `bf_read::ReadBits`.
 - `splitscreen-slot-oob`: the parser signature matches **exactly once**, and the
   parser pointer is found in the message vtable, matching the reverse-engineering.
-- The scanner and patch logic are validated against the real binary.
+- `mdl-studiohdr2-oob`: the hook signature matches **exactly once** in
+  `datacache.dll`, the stolen bytes and both branch targets match the
+  reverse-engineering, and the trampoline disassembles to the intended guard.
+- The scanner, guard logic (including bounds edge cases) and patch targeting are
+  all validated against the real binaries; the guard decision logic is unit-tested.
 - The fix has **not** been exploit-tested against a live malicious server (no
   public PoC was run). It is a structural fix derived from the documented bug;
   treat "protects against the documented vector" as reasoned, not empirically
