@@ -1,6 +1,6 @@
 ![Copyright ev0lve Digital](https://img.shields.io/badge/Copyright-ev0lve%20Digital-blue) ![GitHub License](https://img.shields.io/github/license/HvH-gg/CSGO-LegacyDownloader) ![Issues](https://img.shields.io/github/issues/HvH-gg/CSGO-LegacyDownloader) ![Stars](https://img.shields.io/github/stars/HvH-gg/CSGO-LegacyDownloader)
 
-# [HvH.gg](https://hvh.gg) CSGO Legacy Downloader (1.1.0)
+# [HvH.gg](https://hvh.gg) CSGO Legacy Downloader (1.2.0)
 
 The CSGO Legacy Downloader lets you download and run the old CS:GO builds the legacy HvH scene still plays on. All files come straight from Steam, so no downloads from shady thirdparty sites are required.
 

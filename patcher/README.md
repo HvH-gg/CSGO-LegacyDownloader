@@ -112,12 +112,12 @@ Outputs:
 
 The build is **not** committed to the repository. The
 [`Build patcher`](../.github/workflows/build-patcher.yml) workflow compiles both
-files and attaches them to a GitHub release when a `patcher-v*` tag is pushed
-(e.g. `git tag patcher-v1.0.0 && git push origin patcher-v1.0.0`); it can also be
-run manually to build and keep the artifacts on the run without a release.
-`download-game.ps1` fetches them from `releases/latest/download/` when they are
-not already present next to the script or in a local build, so a plain checkout
-still installs the patcher.
+files and attaches them to the GitHub release of each version tag (e.g.
+`git tag v1.2.0 && git push origin v1.2.0`); it can also be run manually to build
+and keep the artifacts on the run without a release. `download-game.ps1` fetches
+them from the newest release that carries them when they are not already present
+next to the script or in a local build, so a plain checkout still installs the
+patcher.
 
 ## Installing into a downloaded build
 
