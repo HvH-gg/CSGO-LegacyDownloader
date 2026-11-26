@@ -3,3 +3,9 @@ csgo-*/
 server-*/
 conf/
 csgo-server-*.sh
+
+# Patcher build output (CMake / MSVC)
+patcher/build/
+patcher/out/
+patcher/**/*.user
+csgo-patcher.log
