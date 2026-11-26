@@ -102,16 +102,50 @@ if ($patch -ne $chosen.patchVersion) {
     exit 1
 }
 
-# ---- how to start it: Steam has to run; -insecure keeps VAC out of a build Valve no longer serves
+# ---- security patcher: a launcher that injects runtime fixes for this build's known
+#      RCE bugs before the game runs. Shipped prebuilt next to this script (release),
+#      or found in a local build; copied into the game folder when present.
+$patcherInstalled = $false
+if (-not $FileList) {
+    $patcherSources = @(
+        (Join-Path $PSScriptRoot "patcher"),
+        (Join-Path $PSScriptRoot "patcher\build\Release")
+    )
+    foreach ($src in $patcherSources) {
+        $dll = Join-Path $src "csgo-patcher.dll"
+        $exe = Join-Path $src "csgo-patched-launcher.exe"
+        if ((Test-Path -LiteralPath $dll) -and (Test-Path -LiteralPath $exe)) {
+            Copy-Item -LiteralPath $dll -Destination (Join-Path $Path "csgo-patcher.dll") -Force
+            Copy-Item -LiteralPath $exe -Destination (Join-Path $Path "csgo-patched-launcher.exe") -Force
+            $patcherInstalled = $true
+            break
+        }
+    }
+    if (-not $patcherInstalled) {
+        Write-Host "Security patcher not bundled; start.bat will run the game unpatched." -ForegroundColor Yellow
+    }
+}
+
+# ---- how to start it: Steam has to run; -insecure keeps VAC out of a build Valve no longer serves.
+#      With the patcher present, start.bat goes through the launcher (it injects the patcher
+#      and adds -steam -insecure itself); otherwise it starts csgo.exe directly.
 if (-not $FileList) {
     Set-Content -LiteralPath (Join-Path $Path "steam_appid.txt") -Value "730" -Encoding ascii
+    $startLine = if ($patcherInstalled) {
+        "start """" ""%~dp0csgo-patched-launcher.exe"" -novid %*"
+    } else {
+        "start """" ""%~dp0csgo.exe"" -steam -insecure -novid %*"
+    }
     Set-Content -LiteralPath (Join-Path $Path "start.bat") -Encoding ascii -Value @(
         "@echo off",
         "rem Steam has to be running. -insecure: never start this build without it.",
-        "start """" ""%~dp0csgo.exe"" -steam -insecure -novid %*"
+        $startLine
     )
 }
 
 Write-Host ""
 Write-Host ("Done: {0} ({1}) is in {2}" -f $chosen.name, $patch, $Path) -ForegroundColor Green
-if (-not $FileList) { Write-Host "Start it with start.bat in that folder (Steam has to be running)." }
+if (-not $FileList) {
+    Write-Host "Start it with start.bat in that folder (Steam has to be running)."
+    if ($patcherInstalled) { Write-Host "The security patcher is installed and runs automatically on start." -ForegroundColor Green }
+}
