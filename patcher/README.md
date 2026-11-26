@@ -15,15 +15,12 @@ Original game files are never modified on disk — all fixes are applied in memo
 | ID | Vulnerability | Direction | Status |
 |---|---|---|---|
 | `challenge-key-overflow` | Unbounded public-key / signature length in the S2C challenge reply (`CBaseClientState::ProcessConnectionlessPacket`) writes past two `char[1024]` stack buffers → stack overflow / RCE from a malicious server. | server → client | **Implemented, signature-validated against 2018 `engine.dll`.** |
+| `splitscreen-slot-oob` | `CSVCMsg_SplitScreen.slot` used as an unchecked array index, then an indirect virtual call through the fetched pointer → reliable RCE from a malicious server (Secret Club disclosure). | server → client | **Implemented, signature-validated against 2018 `engine.dll`.** |
 
 ### Located but not yet wired
 
-These are reverse-engineered and understood; they slot into the same
-`IPatch` framework and are tracked for follow-up work:
+Reverse-engineered and understood; slots into the same `IPatch` framework:
 
-- **SplitScreen slot OOB** (`CSVCMsg_SplitScreen.slot` used as an unchecked array
-  index → virtual call on attacker-influenced memory). Flagship server → client
-  RCE from the Secret Club disclosure.
 - **MDL `studiohdr2index` OOB write** (`CMDLCache::ReadMDLFile`, in `datacache.dll`)
   — index from a downloaded model used as an unchecked offset for a write.
 
@@ -48,12 +45,26 @@ the expected number of call sites and all of them resolve to the same target. On
 any mismatch (wrong build, already patched, unexpected bytes) it changes nothing
 and reports `NotApplicable`.
 
+## How the SplitScreen fix works
+
+The `CSVCMsg_SplitScreen` message parser (`ReadFromBuffer`) validates the `type`
+field but not `slot`, which the handler then uses as an unchecked array index
+before an indirect virtual call. The fix replaces the parser pointer in the
+message vtable with a guard that runs the original parser and then rejects a
+parse whose decoded `slot` is outside `[0, MAX_SPLITSCREEN_CLIENTS)`. A rejected
+parse makes the engine treat the packet as malformed and drop it, so the
+vulnerable handler never runs. Only a data pointer in the vtable is changed; no
+code is modified, and the guard self-validates that the slot currently holds the
+expected parser before swapping.
+
 ## Verification status
 
-- The signature matches **exactly twice** in the 2018 (`1.36.2.9`) `engine.dll`,
-  and both call sites resolve to the same `bf_read::ReadBits`, matching the
-  reverse-engineering. The scanner and patch logic are validated against the real
-  binary.
+- `challenge-key-overflow`: the signature matches **exactly twice** in the 2018
+  (`1.36.2.9`) `engine.dll`, and both call sites resolve to the same
+  `bf_read::ReadBits`.
+- `splitscreen-slot-oob`: the parser signature matches **exactly once**, and the
+  parser pointer is found in the message vtable, matching the reverse-engineering.
+- The scanner and patch logic are validated against the real binary.
 - The fix has **not** been exploit-tested against a live malicious server (no
   public PoC was run). It is a structural fix derived from the documented bug;
   treat "protects against the documented vector" as reasoned, not empirically
