@@ -108,9 +108,21 @@ Outputs:
 - `build/Release/csgo-patcher.dll` — the patcher
 - `build/Release/csgo-patched-launcher.exe` — the injecting launcher
 
+### Releases (CI)
+
+The build is **not** committed to the repository. The
+[`Build patcher`](../.github/workflows/build-patcher.yml) workflow compiles both
+files and attaches them to a GitHub release when a `patcher-v*` tag is pushed
+(e.g. `git tag patcher-v1.0.0 && git push origin patcher-v1.0.0`); it can also be
+run manually to build and keep the artifacts on the run without a release.
+`download-game.ps1` fetches them from `releases/latest/download/` when they are
+not already present next to the script or in a local build, so a plain checkout
+still installs the patcher.
+
 ## Installing into a downloaded build
 
-Copy both files into the game folder (next to `csgo.exe`) and start the game with
+`download-game.ps1` does this automatically. To do it by hand: copy both files into
+the game folder (next to `csgo.exe`) and start the game with
 `csgo-patched-launcher.exe` instead of `csgo.exe`. The launcher forwards any extra
 arguments to the game and always adds `-steam -insecure`. It writes a
 `csgo-patcher.log` next to the executable recording which patches applied.
