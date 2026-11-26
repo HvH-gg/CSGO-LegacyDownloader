@@ -1,0 +1,50 @@
+name: Build patcher
+
+# Builds the CS:GO legacy security patcher (32-bit MSVC) and publishes the two
+# runtime artifacts to a GitHub release, where download-game.ps1 fetches them
+# from (releases/latest/download/...). Push a tag like `patcher-v1.0.0` to cut a
+# release, or run it by hand (workflow_dispatch) to just build and keep the
+# artifacts on the run.
+
+on:
+  push:
+    tags:
+      - "patcher-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure (Win32)
+        run: cmake -S patcher -B patcher/build -A Win32
+
+      - name: Build (Release)
+        run: cmake --build patcher/build --config Release
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item patcher/build/Release/csgo-patcher.dll          dist/
+          Copy-Item patcher/build/Release/csgo-patched-launcher.exe dist/
+          Get-ChildItem dist
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: csgo-patcher
+          path: dist/*
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/patcher-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/csgo-patcher.dll
+            dist/csgo-patched-launcher.exe
