@@ -14,13 +14,13 @@ namespace {
 // ---------------------------------------------------------------------------
 //  Target
 // ---------------------------------------------------------------------------
-//  CS:GO 2018 (build 1.36.2.9) engine.dll, inside
-//  CBaseClientState::ProcessConnectionlessPacket, the two S2C_CHALLENGE key
-//  reads at .text:1008C6AA and .text:1008C7AD:
+//  engine.dll, inside CBaseClientState::ProcessConnectionlessPacket: the two
+//  S2C_CHALLENGE key reads (public key + signature), e.g. on 2018 (1.36.2.9) at
+//  .text:1008C6AA and .text:1008C7AD:
 //
 //      8B CE                 mov  ecx, esi                 ; bf_read *this
 //      50                    push eax                      ; nBits = keyLen * 8
-//      8D 84 24 34 0A/06 00  lea  eax, [esp + dstBuffer]   ; char[1024] on stack
+//      8D 84 24 ?? 0A/06 00  lea  eax, [esp + dstBuffer]   ; char[1024] on stack
 //      50                    push eax                      ; dst
 //      E8 .. .. .. ..        call bf_read::ReadBits        ; rel32 rewritten below
 //
@@ -28,12 +28,20 @@ namespace {
 //  Neither key length is bounded before the read, so nBits can exceed the
 //  1024-byte destination and smash the stack.
 //
-//  The lea displacement byte differs between the two sites (0x0A vs 0x06), so it
-//  is wildcarded; the signature matches both sites and both are redirected.
+//  The lea displacement's low byte is the per-build stack layout of the two
+//  char[1024] buffers (2018/2019/2020: 0x_34, two buffers 0x400 apart; 2016:
+//  0x_D4, same 0x400 gap -> still char[1024]). Its next byte differs between the
+//  two sites (0x0A vs 0x06) and is wildcarded. One candidate signature per build
+//  layout is tried; the first that yields exactly two call sites to a single
+//  ReadBits is used, so a single DLL covers every shipped build.
 // ---------------------------------------------------------------------------
 
-constexpr std::string_view kCallSiteSignature =
-    "8B CE 50 8D 84 24 34 ?? 00 00 50 E8";
+// Candidate call-site signatures, by per-build stack layout (see above). Each
+// must match exactly kExpectedCallSites sites, all resolving to one ReadBits.
+constexpr std::string_view kCallSiteSignatures[] = {
+    "8B CE 50 8D 84 24 34 ?? 00 00 50 E8",  // 2018 / 2019 / 2020
+    "8B CE 50 8D 84 24 D4 ?? 00 00 50 E8",  // 2016
+};
 
 // Offset of the 0xE8 CALL opcode within a signature match.
 constexpr std::ptrdiff_t kCallOpcodeOffset = 11;
@@ -93,17 +101,23 @@ public:
             return ApplyResult::not_applicable("engine.dll not loaded");
         }
 
-        const auto pattern = Pattern::compile(kCallSiteSignature);
-        if (!pattern) {
-            return ApplyResult::failed("internal: call-site signature failed to compile");
+        // Try each per-build candidate; the right one matches exactly the
+        // expected number of call sites. A build we do not recognise matches
+        // none and is reported NotApplicable, untouched.
+        std::vector<std::uint8_t*> sites;
+        for (const std::string_view sig : kCallSiteSignatures) {
+            const auto pattern = Pattern::compile(sig);
+            if (!pattern) {
+                return ApplyResult::failed("internal: call-site signature failed to compile");
+            }
+            std::vector<std::uint8_t*> found = pattern->find_all(engine);
+            if (found.size() == kExpectedCallSites) {
+                sites = std::move(found);
+                break;
+            }
         }
-
-        const std::vector<std::uint8_t*> sites = pattern->find_all(engine);
         if (sites.size() != kExpectedCallSites) {
-            char buf[96];
-            std::snprintf(buf, sizeof(buf), "expected %zu call sites, found %zu",
-                          kExpectedCallSites, sites.size());
-            return ApplyResult::not_applicable(buf);
+            return ApplyResult::not_applicable("no challenge-read signature matched this build");
         }
 
         // Verify every site is a rel32 CALL to the same target before touching

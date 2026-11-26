@@ -14,13 +14,15 @@ namespace {
 // ---------------------------------------------------------------------------
 //  Target
 // ---------------------------------------------------------------------------
-//  CS:GO 2018 (build 1.36.2.9) engine.dll. The generated parser for
-//  CSVCMsg_SplitScreen (the message's ReadFromBuffer / MergePartialFromBuffer,
-//  vtable slot 7 of the message class) decodes three varint fields:
+//  engine.dll. The generated parser for CSVCMsg_SplitScreen (the message's
+//  ReadFromBuffer / MergePartialFromBuffer) decodes three varint fields:
 //      field 1 type         -> object + 8    (validated to {0,1} already)
 //      field 2 slot         -> object + 12   (NOT range-checked  <-- the bug)
 //      field 3 player_index -> object + 16
-//  with the present-field bitmask at object + 24.
+//  with the present-field bitmask at object + 24. These field offsets and the
+//  has-bits layout are identical across every shipped build (2016 / 2018 / 2019
+//  / 2020), so the guard below is build-independent; only the parser prologue
+//  changes shape between compilers and needs a per-build signature.
 //
 //  The handler later uses `slot` as an unchecked index into the split-screen
 //  player array, then makes an indirect virtual call through the fetched
@@ -30,9 +32,18 @@ namespace {
 //  the packet as malformed and never dispatches it.
 // ---------------------------------------------------------------------------
 
-// Unique 23-byte prologue of the CSVCMsg_SplitScreen parser (ReadFromBuffer).
-constexpr std::string_view kParserSignature =
-    "55 8B EC 83 EC 08 56 8B 75 08 57 8B F9 0F 1F 00 8B 4E 04 3B 4E 08 73";
+// Candidate parser prologues, one per build-compiler shape. Each must be unique
+// (exactly one match) in its own engine.dll. The first that matches is used, so a
+// single DLL covers every shipped build. 2018/2019/2020 share one prologue; 2016
+// aligns the stack (and 83 EC 10), so its prologue differs and runs longer to
+// stay unique (its two jae rel8 displacements are wildcarded).
+constexpr std::string_view kParserSignatures[] = {
+    // 2018 / 2019 / 2020
+    "55 8B EC 83 EC 08 56 8B 75 08 57 8B F9 0F 1F 00 8B 4E 04 3B 4E 08 73",
+    // 2016
+    "55 8B EC 83 E4 F8 83 EC 10 56 8B 75 08 57 8B F9 8B 4E 04 3B 4E 08 73 ?? "
+    "8A 01 3C 80 73 ?? 0F B6 C0 89 46 14 8D 41 01 8B 4E 14",
+};
 
 // Message object field offsets (see above).
 constexpr std::size_t   kHasBitsOffset = 24;
@@ -94,14 +105,19 @@ public:
         const CodeSpan engine = module_image(L"engine.dll");
         if (engine.empty()) return ApplyResult::not_applicable("engine.dll not loaded");
 
-        const auto pattern = Pattern::compile(kParserSignature);
-        if (!pattern) return ApplyResult::failed("internal: parser signature failed to compile");
-
-        const std::vector<std::uint8_t*> parser = pattern->find_all(engine);
+        // Try each per-build prologue; the matching build yields exactly one.
+        std::vector<std::uint8_t*> parser;
+        for (const std::string_view sig : kParserSignatures) {
+            const auto pattern = Pattern::compile(sig);
+            if (!pattern) return ApplyResult::failed("internal: parser signature failed to compile");
+            std::vector<std::uint8_t*> found = pattern->find_all(engine);
+            if (found.size() == 1) {
+                parser = std::move(found);
+                break;
+            }
+        }
         if (parser.size() != 1) {
-            char buf[80];
-            std::snprintf(buf, sizeof(buf), "expected 1 parser, found %zu", parser.size());
-            return ApplyResult::not_applicable(buf);
+            return ApplyResult::not_applicable("no split-screen parser signature matched this build");
         }
 
         std::uint8_t* parser_fn = parser.front();

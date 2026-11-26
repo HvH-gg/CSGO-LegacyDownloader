@@ -14,9 +14,9 @@ Original game files are never modified on disk — all fixes are applied in memo
 
 | ID | Vulnerability | Direction | Status |
 |---|---|---|---|
-| `challenge-key-overflow` | Unbounded public-key / signature length in the S2C challenge reply (`CBaseClientState::ProcessConnectionlessPacket`) writes past two `char[1024]` stack buffers → stack overflow / RCE from a malicious server. | server → client | **Implemented, signature-validated against 2018 `engine.dll`.** |
-| `splitscreen-slot-oob` | `CSVCMsg_SplitScreen.slot` used as an unchecked array index, then an indirect virtual call through the fetched pointer → reliable RCE from a malicious server (Secret Club disclosure). | server → client | **Implemented, signature-validated against 2018 `engine.dll`.** |
-| `mdl-studiohdr2-oob` | `studiohdr2index` read from a downloaded `.mdl` and used as an unchecked write offset (`CMDLCache::ReadMDLFile` in `datacache.dll`) → out-of-bounds write from a malicious server (Synacktiv disclosure). | server → client | **Implemented, signature-validated against 2018 `datacache.dll`.** |
+| `challenge-key-overflow` | Unbounded public-key / signature length in the S2C challenge reply (`CBaseClientState::ProcessConnectionlessPacket`) writes past two `char[1024]` stack buffers → stack overflow / RCE from a malicious server. | server → client | **Implemented, signature-validated against the 2016 / 2018 / 2019 / 2020 `engine.dll`.** |
+| `splitscreen-slot-oob` | `CSVCMsg_SplitScreen.slot` used as an unchecked array index, then an indirect virtual call through the fetched pointer → reliable RCE from a malicious server (Secret Club disclosure). | server → client | **Implemented, signature-validated against the 2016 / 2018 / 2019 / 2020 `engine.dll`.** |
+| `mdl-studiohdr2-oob` | `studiohdr2index` read from a downloaded `.mdl` and used as an unchecked write offset (`CMDLCache::ReadMDLFile` in `datacache.dll`) → out-of-bounds write from a malicious server (Synacktiv disclosure). | server → client | **Implemented, signature-validated against the 2016 / 2018 / 2019 / 2020 `datacache.dll`.** |
 
 ### Deliberately deferred
 
@@ -64,23 +64,34 @@ bytes before installing.
 
 ## Verification status
 
-- `challenge-key-overflow`: the signature matches **exactly twice** in the 2018
-  (`1.36.2.9`) `engine.dll`, and both call sites resolve to the same
-  `bf_read::ReadBits`.
-- `splitscreen-slot-oob`: the parser signature matches **exactly once**, and the
-  parser pointer is found in the message vtable, matching the reverse-engineering.
-- `mdl-studiohdr2-oob`: the hook signature matches **exactly once** in
-  `datacache.dll`, the stolen bytes and both branch targets match the
-  reverse-engineering, and the trampoline disassembles to the intended guard.
+All four shipped builds (2016 / 2018 / 2019 / 2020) are validated:
+
+- `challenge-key-overflow`: a per-build candidate signature matches **exactly
+  twice** in each `engine.dll`, and both call sites resolve to the same
+  `bf_read::ReadBits`. 2018/2019/2020 share one signature; 2016's two key buffers
+  sit at a different stack displacement (the `lea` low byte is `0xD4`, not `0x34`),
+  so it has its own candidate. Both buffers stay `0x400` apart on every build, so
+  the `char[1024]` cap is correct throughout.
+- `splitscreen-slot-oob`: a per-build parser prologue matches **exactly once**, and
+  the parser pointer is found in the message vtable(s). The field offsets the guard
+  reads (`slot` at object+12, has-bits at object+24, bit 2) are identical on all
+  four builds; only the prologue shape differs (2016 aligns the stack), so it has
+  its own signature.
+- `mdl-studiohdr2-oob`: one hook signature matches **exactly once** in every
+  `datacache.dll`; the stolen bytes, the write/reject branch targets and the OOB
+  store on the write path all match across builds, and the buffer-size argument the
+  bounds check reads (`[ebx+4]`, from `mov ebx,[ebp+0x10]`) is the same on all four.
+  No per-build signature is needed.
+- A single `csgo-patcher.dll` covers every build: each patch tries its candidates
+  and applies the one that matches; an unrecognised binary matches none and is
+  reported `NotApplicable`, untouched.
 - The scanner, guard logic (including bounds edge cases) and patch targeting are
-  all validated against the real binaries; the guard decision logic is unit-tested.
+  all validated against the real binaries of all four builds; the guard decision
+  logic is unit-tested.
 - The fix has **not** been exploit-tested against a live malicious server (no
   public PoC was run). It is a structural fix derived from the documented bug;
   treat "protects against the documented vector" as reasoned, not empirically
   proven, until a reproduction is run.
-- Only the 2018 build's signature is included so far. Other builds
-  (2016 / 2019 / 2020) need their own signatures confirmed before the patch
-  reports anything but `NotApplicable` for them.
 
 ## Building
 
